@@ -1,0 +1,51 @@
+{
+  "brokers": [
+    {
+      "name": "",
+      "type": "both",
+      "url": "",
+      "reconnectS": 30
+    },
+    {
+      "type": "source",
+      "url": "",
+      "reconnectMs": 10000
+    },
+    {
+      "name": "offnet",
+      "type": "destination",
+      "active": false,
+      "url": "",
+      "reconnectS": 120
+    }
+  ],
+
+  "bindingsRoot": "./scripts",
+  "bindings": [
+    {
+      "name": "replicate",
+      "from": { "broker": "source", "topic": "sensor/#" },
+      "to": { "broker": 0 },
+      "path": "./function.js"
+    },
+    {
+      "name": "federation",
+      "active": false,
+      "from": { "broker": [ 0, "source" ], "topic": "#" },
+      "to": { "broker": "offnet", "topic": "federation/#" },
+      "function": "module.exports.handler = (topic, payload) => (topic, payload);"
+    },
+    {
+      "name": "gps path",
+      "from": { "broker": [ 0 ], "topic": "gpsd/+" },
+      "to": { "broker": 0, "topic": "gpsd/path" },
+      "path": "./calc_gps_path.js"
+    },
+    {
+      "name": "label",
+      "from": { "broker": 0, "topic": "#" },
+      "to": { "broker": 0, "topic": "#" },
+      "path": "./label.js"
+    }
+  ]
+}
