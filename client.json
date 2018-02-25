@@ -3,7 +3,6 @@
     {
       "name": "",
       "type": "both",
-      "url": "",
       "reconnectS": 30
     },
     {
@@ -31,9 +30,9 @@
     {
       "name": "federation",
       "active": false,
-      "from": { "broker": [ 0, "source" ], "topic": "#" },
+      "from": { "brokers": [ 0, "source" ], "topic": "#" },
       "to": { "broker": "offnet", "topic": "federation/#" },
-      "function": "module.exports.handler = (topic, payload) => (topic, payload);"
+      "fn": "module.exports.handler = (topic, payload) => (topic, payload);"
     },
     {
       "name": "gps path",
@@ -42,9 +41,6 @@
       "path": "./calc_gps_path.js"
     },
     {
-      "name": "label",
-      "from": { "broker": 0, "topic": "#" },
-      "to": { "broker": 0, "topic": "#" },
       "path": "./label.js"
     }
   ]
