@@ -205,7 +205,7 @@ class Binding {
     const from = binding.from.brokers.map(fbname => {
       const fb = config.brokers.find(b => fbname === b.name);
       return new Promise((resolve, reject) => {
-        const topic = 'test'; //binding.from.topic;
+        const topic = binding.from.topic;
         fb.client.subscribe(topic, {}, (err, granted) => {
           if(err) { reject(err); }
           const [gtopic, gqos] = granted;
@@ -239,17 +239,20 @@ class Binding {
   static _handleMessage(config, binding, topic, message) {
     return Binding._run(config, binding, topic, message)
       .then(result => {
-        // console.log('binding run result', binding.client.sandbox);
+        //console.log('binding run result', binding.client.sandbox);
+        //return null;
         return Promise.all(binding.to.brokers.map(tname => {
           const tb = config.brokers.find(b => b.name === tname);
           if(tb === undefined) { throw Error('to broker not found', binding.name, tname); }
+          console.log('to publish for binding', binding.name, tb.name, binding.client.sandbox.publishQueue.length);
           return Promise.all(binding.client.sandbox.publishQueue.map(outmsg => {
-            console.log('sandbox publish message', outmsg);
             return new Promise((resolve, reject) => {
-              const topic = 'test2';
-              const pmsg = 'hello'; // outmsg
-              tb.client.publish(topic, pmsg, {}, err => {
-                if(err) { reject(err); return; }
+              const ptopic = Binding._makeToTopic(binding.to.topic, 'topic_from_queue');
+              const pmsg = outmsg;
+              console.log('sandbox publish message to broker', tb.name,  ptopic, pmsg);
+              tb.client.publish(ptopic, pmsg, {}, err => {
+                if(err) { console.log('error publishing', e); reject(err); return; }
+                console.log('publish success!');
                 resolve();
               });
             })
@@ -257,8 +260,14 @@ class Binding {
               console.log('publish error', e);
             });
           }));
-        }));
+        })).then(() => binding.client.sandbox.publishQueue = []);
       });
+  }
+
+  static _makeToTopic(pattern, topic) {
+    if(pattern === '#') { return topic; }
+    if(pattern.includes('+')) { return pattern.replace('+', topic); }
+    return pattern;
   }
 
   static _load(config, binding) {
@@ -266,18 +275,22 @@ class Binding {
 
     binding.client.sandbox = undefined;
 
-    const publishQueue = [];
-
     const sandbox = {
       Buffer: Buffer,
       console: console,
 
-      publishQueue: publishQueue,
-      publish: (t, m) => { publishQueue.push(m); return 0; },
+      publishQueue: [],
+      publish: undefined,
 
       timeoutMs: 2 * 1000,
       module: { exports: {} }
     };
+    sandbox.publish = function(t, m) {
+      console.log('PUB to Queue', t, m);
+      sandbox.publishQueue.push(m);
+      return 1;
+    };
+
 
     return new Promise((resolve, reject) => {
       binding.client.script.runInNewContext(sandbox, {
@@ -297,16 +310,18 @@ class Binding {
     console.log('*** run binding', binding.name);
 
     return new Promise((resolve, reject) => {
-      const sandbox = {
-        timeoutMs: binding.client.sandbox.timeoutMs,
+      const sandbox = binding.client.sandbox.module.exports;
+//      sandbox.Buffer = Buffer;
+//      sandbox.console = console;
+//      sandbox.publishQueue = [];
+//      sandbox.publish = (t, m) => { console.log('PUB to Queue - runtime', t, m); publishQueue.push(m); return 0; };
+      sandbox.timoutMs = 2 * 1000;
 
-        handler: binding.client.sandbox.module.exports.handler,
+      sandbox.status = undefined;
+      sandbox.topic = topic;
+      sandbox.message = message;
 
-        status: undefined,
-        topic: topic,
-        message: message
-      };
-
+      // todo cache me
       const stubcode = 'status = handler(topic, message);';
       const stub = new vm.Script(stubcode, { filename: '_stub_', timeout: sandbox.timeoutMs });
 
@@ -318,7 +333,7 @@ class Binding {
         contextOrigin: 'urn://mqtt2mqtt'
       });
 
-      console.log('after run sandbox', sandbox.status)
+      console.log('after run sandbox', sandbox.status);
       resolve();
     });
   }

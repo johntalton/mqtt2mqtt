@@ -23,6 +23,10 @@ module.exports.handler = function (topic, payload) {
     json.labels = labels;
   }
 
+
+  if(json.touched === undefined) { json.touched = 0; }
+  json.touched += 1;
+
   return publish(topic, JSON.stringify(json));
 };
 

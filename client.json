@@ -2,12 +2,12 @@
   "brokers": [
     {
       "name": "",
-      "type": "both",
+      "type": "source",
       "reconnectS": 30
     },
     {
-      "type": "source",
-      "url": "",
+      "name": "plusone",
+      "url": "some address here",
       "reconnectMs": 10000
     },
     {
@@ -22,10 +22,14 @@
   "bindingsRoot": "./scripts",
   "bindings": [
     {
-      "name": "replicate",
-      "from": { "broker": "source", "topic": "sensor/#" },
-      "to": { "broker": 0 },
-      "path": "./function.js"
+      "name": "Demo",
+      "from": { "broker": 0, "topic": "rotaryEncoder/+" },
+      "to": { "broker": "plusone", "topic": "/CnC/pwm/you" },
+      "path": "./demo.js"
+    },
+    {
+      "path": "./label.js",
+      "active": false
     },
     {
       "name": "federation",
@@ -39,9 +43,6 @@
       "from": { "broker": [ 0 ], "topic": "gpsd/+" },
       "to": { "broker": 0, "topic": "gpsd/path" },
       "path": "./calc_gps_path.js"
-    },
-    {
-      "path": "./label.js"
     }
   ]
 }
